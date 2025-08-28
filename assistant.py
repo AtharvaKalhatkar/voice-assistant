@@ -9,8 +9,8 @@ import requests
 from googletrans import Translator
 
 # --- API KEYS: Insert your own ---
-OPENWEATHER_API_KEY = "YOUR_OPENWEATHER_API_KEY"
-NEWS_API_KEY = "YOUR_NEWSAPI_KEY"
+OPENWEATHER_API_KEY = "8664e39286601005862c02bfb2208933"
+NEWS_API_KEY = "a60db498db974a59b1be0452761f8031"
 
 class VoiceAssistant:
     def __init__(self):
