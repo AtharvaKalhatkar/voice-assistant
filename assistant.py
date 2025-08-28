@@ -1,256 +1,175 @@
-import speech_recognition as sr
+# assistant.py
 import pyttsx3
+import speech_recognition as sr
 import webbrowser
-import datetime
 import wikipedia
-import random
-import difflib
-import requests
-from googletrans import Translator
+import datetime
+import os
+import subprocess
+import platform
+import traceback
 
-# --- API KEYS: Insert your own ---
-OPENWEATHER_API_KEY = "8664e39286601005862c02bfb2208933"
-NEWS_API_KEY = "a60db498db974a59b1be0452761f8031"
+# Initialize TTS
+tts_engine = pyttsx3.init()
+tts_engine.setProperty("rate", 165)
+tts_engine.setProperty("volume", 1.0)
 
-class VoiceAssistant:
-    def __init__(self):
-        self.recognizer = sr.Recognizer()
-        self.engine = pyttsx3.init()
-        self.jokes = [
-            "Why did the computer show up at work late? It had a hard drive.",
-            "Why do programmers prefer dark mode? Because light attracts bugs!",
-            "Why was the cell phone wearing glasses? It lost its contacts."
-        ]
-        self.todo = []
-        self.translator = Translator()
-        self.reminders = []
-        self.alarms = []
+def speak(text: str):
+    """Speak text (TTS) and also return the text so UI can display it."""
+    print("Assistant:", text)
+    try:
+        tts_engine.say(text)
+        tts_engine.runAndWait()
+    except Exception:
+        # tts can fail on some systems; keep UI working
+        print("TTS error:", traceback.format_exc())
+    return text
 
-    def speak(self, text):
-        print(f"Assistant: {text}")
-        self.engine.say(text)
-        self.engine.runAndWait()
-
-    def listen(self):
-        with sr.Microphone() as source:
-            print("Listening...")
-            audio = self.recognizer.listen(source)
-            try:
-                command = self.recognizer.recognize_google(audio)
-                print(f"You said: {command}")
-                return command.lower()
-            except sr.UnknownValueError:
-                self.speak("Sorry, I could not understand.")
-            except sr.RequestError:
-                self.speak("Sorry, I am having trouble connecting to the service.")
-            return ""
-
-    # --- Feature: Weather ---
-    def get_weather(self, city):
-        if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY == "YOUR_OPENWEATHER_API_KEY":
-            self.speak("Weather API key not set.")
-            return
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
-        try:
-            response = requests.get(url)
-            data = response.json()
-            if data.get("main"):
-                temp = data["main"]["temp"]
-                desc = data["weather"][0]["description"]
-                self.speak(f"The weather in {city} is {desc} with a temperature of {temp} degrees Celsius.")
-            else:
-                self.speak("Sorry, I couldn't find the weather for that city.")
-        except Exception:
-            self.speak("Failed to get weather information.")
-
-    # --- Feature: News ---
-    def get_news(self):
-        if not NEWS_API_KEY or NEWS_API_KEY == "YOUR_NEWSAPI_KEY":
-            self.speak("News API key not set.")
-            return
-        url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
-        try:
-            response = requests.get(url)
-            data = response.json()
-            articles = data.get("articles", [])
-            if articles:
-                self.speak("Here are the top news headlines:")
-                for article in articles[:3]:
-                    self.speak(article["title"])
-            else:
-                self.speak("Sorry, I couldn't find any news.")
-        except Exception:
-            self.speak("Failed to get news information.")
-
-    # --- Feature: Reminders ---
-    def add_reminder(self, task, time):
-        self.reminders.append((task, time))
-        self.speak(f"Reminder set for {task} at {time}.")
-
-    # --- Feature: To-Do List ---
-    def add_todo(self, task):
-        self.todo.append(task)
-        self.speak(f"Added {task} to your to-do list.")
-
-    def list_todo(self):
-        if self.todo:
-            self.speak("Your to-do list includes:")
-            for item in self.todo:
-                self.speak(item)
+def _open_with_path(path):
+    try:
+        if platform.system() == "Windows":
+            os.startfile(path)
         else:
-            self.speak("Your to-do list is empty.")
-
-    # --- Feature: Play Music ---
-    def play_music(self, query):
-        url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
-        self.speak(f"Playing {query} on YouTube.")
-        webbrowser.open(url)
-
-    # --- Feature: Calculator/Math ---
-    def calculate(self, expression):
-        try:
-            result = eval(expression)
-            self.speak(f"The answer is {result}.")
-        except Exception:
-            self.speak("Sorry, I can't calculate that.")
-
-    # --- Feature: Open Applications ---
-    def open_application(self, app):
-        import os
-        if app in ["notepad"]:
-            os.system("notepad.exe")
-            self.speak("Opening Notepad.")
-        elif app in ["chrome", "google chrome"]:
-            os.system("start chrome")
-            self.speak("Opening Chrome.")
-        else:
-            self.speak("Application not recognized.")
-
-    # --- Feature: Set Alarms/Timers ---
-    def set_timer(self, seconds):
-        import time
-        self.speak(f"Timer set for {seconds} seconds.")
-        time.sleep(int(seconds))
-        self.speak(f"Timer finished after {seconds} seconds!")
-
-    def set_alarm(self, alarm_time):
-        self.alarms.append(alarm_time)
-        self.speak(f"Alarm set for {alarm_time}. (Note: This is a reminder only, not an actual alarm sound.)")
-
-    # --- Feature: General Knowledge Q&A ---
-    def general_knowledge(self, query):
-        try:
-            summary = wikipedia.summary(query, sentences=2)
-            self.speak(summary)
-        except Exception:
-            self.speak("Sorry, I couldn't find information on that topic.")
-
-    # --- Feature: Language Translation ---
-    def translate(self, text, dest_lang):
-        try:
-            result = self.translator.translate(text, dest=dest_lang)
-            self.speak(f"{text} in {dest_lang} is {result.text}")
-        except Exception:
-            self.speak("Sorry, I couldn't translate that.")
-
-    # --- Feature: Read Text File ---
-    def read_text_file(self, filepath):
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read(300)
-                self.speak(f"The content is: {content}")
-        except Exception:
-            self.speak("Sorry, I couldn't read that file.")
-
-    def handle_command(self, command):
-        print(f"Recognized command: {command}")
-        # Weather
-        if "weather in" in command:
-            city = command.split("weather in")[-1].strip()
-            self.get_weather(city)
-        # News
-        elif "news" in command or "headlines" in command:
-            self.get_news()
-        # Reminder
-        elif "remind me to" in command and "at" in command:
-            try:
-                task = command.split("remind me to")[1].split("at")[0].strip()
-                time = command.split("at")[1].strip()
-                self.add_reminder(task, time)
-            except Exception:
-                self.speak("Please specify the reminder in format: Remind me to [task] at [time].")
-        # To-Do
-        elif "add" in command and "to my to-do list" in command:
-            task = command.split("add")[1].split("to my to-do list")[0].strip()
-            self.add_todo(task)
-        elif "show my to-do list" in command or "list my to-do" in command:
-            self.list_todo()
-        # Music
-        elif "play" in command and "music" in command:
-            self.play_music("music")
-        elif "play" in command:
-            song = command.replace("play", "").strip()
-            self.play_music(song)
-        # Calculator/Math
-        elif "calculate" in command:
-            expr = command.replace("calculate", "").strip()
-            self.calculate(expr)
-        elif "what is" in command:
-            expr = command.replace("what is", "").strip()
-            self.calculate(expr)
-        # Open Applications
-        elif "open" in command and ("notepad" in command or "chrome" in command):
-            if "notepad" in command:
-                self.open_application("notepad")
-            elif "chrome" in command:
-                self.open_application("chrome")
-        # Timer
-        elif "set a timer for" in command:
-            words = command.split()
-            try:
-                seconds = [int(w) for w in words if w.isdigit()][0]
-                self.set_timer(seconds)
-            except Exception:
-                self.speak("Please say: Set a timer for [number] seconds.")
-        # Alarm
-        elif "set an alarm for" in command:
-            alarm_time = command.split("set an alarm for")[-1].strip()
-            self.set_alarm(alarm_time)
-        # General Knowledge
-        elif "who is" in command or "what is" in command:
-            query = command.replace("who is", "").replace("what is", "").strip()
-            self.general_knowledge(query)
-        # Translation
-        elif "translate" in command and "to" in command:
-            try:
-                text = command.split("translate")[1].split("to")[0].strip()
-                lang = command.split("to")[-1].strip()
-                self.translate(text, lang)
-            except Exception:
-                self.speak("Say: Translate [word] to [language].")
-        # Read Text File
-        elif "read my document" in command or "read file" in command:
-            filepath = "document.txt"  # You can change or extract filename from command
-            self.read_text_file(filepath)
-        # Greetings
-        elif "hello" in command or "hi" in command:
-            self.speak("Hello! How can I help you?")
-        # Joke
-        elif "joke" in command or "tell me a joke" in command:
-            joke = random.choice(self.jokes)
-            self.speak(joke)
-        # Exit
-        elif "goodbye" in command or "stop listening" in command or "exit" in command or "bye" in command:
-            self.speak("Goodbye!")
-            return False
-        else:
-            self.speak("Sorry, I don't recognize that command.")
+            subprocess.Popen(["xdg-open", path])
         return True
+    except Exception as e:
+        print("Error opening path:", e)
+        return False
 
-    def listen_and_respond(self):
-        self.speak("Hello! How can I help you today?")
-        running = True
-        while running:
-            command = self.listen()
-            if command:
-                running = self.handle_command(command)
+def open_application(name: str):
+    """Open common apps. Extend this mapping with full exe paths if needed."""
+    n = name.lower()
+    try:
+        # Common Windows apps
+        if "notepad" in n:
+            os.system("notepad")
+            return speak("Opening Notepad")
+        if "calculator" in n or "calc" in n:
+            if platform.system() == "Windows":
+                os.system("calc")
+            else:
+                subprocess.Popen(["gnome-calculator"])
+            return speak("Opening Calculator")
+        if "chrome" in n or "google chrome" in n or "google" in n and "chrome" in n:
+            # common chrome path on Windows; modify if necessary
+            paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+            ]
+            for p in paths:
+                if os.path.exists(p):
+                    subprocess.Popen([p])
+                    return speak("Opening Google Chrome")
+            # fallback to default browser open
+            webbrowser.open("https://www.google.com")
+            return speak("Opening Google in browser")
+        if "paint" in n:
+            os.system("mspaint")
+            return speak("Opening Paint")
+        if "word" in n:
+            # path for Office 365 Word - adjust if different
+            possible = [
+                r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE"
+            ]
+            for p in possible:
+                if os.path.exists(p):
+                    subprocess.Popen([p])
+                    return speak("Opening Microsoft Word")
+            return speak("Microsoft Word not found in default path.")
+        # try to open as file/folder path
+        if os.path.exists(name):
+            ok = _open_with_path(name)
+            if ok:
+                return speak(f"Opening {name}")
+        return speak(f"Sorry, I don't know how to open {name} yet.")
+    except Exception as e:
+        print("open_application error:", e)
+        return speak("I faced a problem opening the application.")
+
+def search_wikipedia(query: str):
+    q = query.strip()
+    if not q:
+        return speak("Please tell me what to search on Wikipedia.")
+    try:
+        summary = wikipedia.summary(q, sentences=2, auto_suggest=True, redirect=True)
+        return speak(summary)
+    except wikipedia.DisambiguationError as e:
+        options = e.options[:5]
+        return speak(f"That query is ambiguous. Possible topics: {', '.join(options)}")
+    except wikipedia.PageError:
+        return speak("I couldn't find a page for that topic on Wikipedia.")
+    except Exception as ex:
+        print("Wikipedia error:", ex)
+        return speak("Sorry, I couldn't fetch information right now.")
+
+def process_command(command: str):
+    """Process a user's command (text). Returns a response string or 'EXIT' to quit."""
+    if not command or not command.strip():
+        return None
+
+    cmd = command.lower().strip()
+    # --- Greetings / small talk ---
+    if any(w in cmd for w in ["hi", "hello", "hii", "hey"]):
+        return speak("Hey! Nice to see you. How can I help you?")
+    if "how are you" in cmd:
+        return speak("I'm doing well — ready to help you. How are you?")
+    if "your name" in cmd or "who are you" in cmd:
+        return speak("I'm your personal voice assistant built in Python.")
+    if "good morning" in cmd:
+        return speak("Good morning! Hope you have a great day.")
+    if "good night" in cmd:
+        return speak("Good night! Sleep well.")
+
+    # --- Time / Date ---
+    if "time" in cmd and "what" in cmd or cmd == "time" or "current time" in cmd:
+        now = datetime.datetime.now().strftime("%I:%M %p")
+        return speak(f"The current time is {now}")
+    if "date" in cmd and ("what" in cmd or "today" in cmd):
+        today = datetime.date.today().strftime("%B %d, %Y")
+        return speak(f"Today's date is {today}")
+
+    # --- Wikipedia / General knowledge ---
+    if cmd.startswith(("who is", "what is", "tell me about", "define", "explain")) or "wikipedia" in cmd:
+        # sanitize
+        q = cmd
+        for prefix in ("who is", "what is", "tell me about", "search wikipedia for", "wikipedia", "define", "explain"):
+            q = q.replace(prefix, "")
+        q = q.strip()
+        return search_wikipedia(q)
+
+    # --- Open websites ---
+    if "open youtube" in cmd:
+        webbrowser.open("https://www.youtube.com")
+        return speak("Opening YouTube")
+    if "open google" in cmd:
+        webbrowser.open("https://www.google.com")
+        return speak("Opening Google")
+    if "open github" in cmd:
+        webbrowser.open("https://github.com")
+        return speak("Opening GitHub")
+    if "open stack overflow" in cmd or "open stackoverflow" in cmd:
+        webbrowser.open("https://stackoverflow.com")
+        return speak("Opening Stack Overflow")
+
+    # --- Open apps or files ---
+    if cmd.startswith("open "):
+        target = cmd.replace("open ", "", 1).strip()
+        # if user said "open file <name>" or "open folder <name>"
+        # try basic patterns
+        # attempt app open
+        return open_application(target)
+
+    # --- System commands (dangerous actions are intentionally limited) ---
+    if "shutdown" in cmd and ("now" in cmd or "shutdown" == cmd):
+        # We will not auto-execute shutdown to avoid misuse; inform user how to do it
+        return speak("I can tell you how to shut down, but I won't run shutdown commands automatically for safety.")
+    if "restart" in cmd:
+        return speak("I can restart the system if you want, but that command is disabled for safety.")
+
+    # --- Exit/Stop ---
+    if any(x in cmd for x in ["exit", "quit", "stop", "goodbye", "bye"]):
+        speak("Goodbye! Have a nice day.")
+        return "EXIT"
+
+    # --- Fallback ---
+    return speak("Sorry, I don't understand that yet. You can ask me to open apps, search Wikipedia, open websites, or ask general questions.")
