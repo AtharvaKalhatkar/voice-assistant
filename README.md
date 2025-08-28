@@ -6,6 +6,11 @@ A simple Python voice assistant using speech recognition and text-to-speech.
 
 - Listens for voice input
 - Responds with spoken feedback
+- Opens websites (Google, YouTube)
+- Tells the current time
+- Searches Wikipedia and summarizes results
+- Tells a joke
+- Stops on command ("goodbye", "exit", "stop listening")
 
 ## Requirements
 
@@ -13,6 +18,7 @@ A simple Python voice assistant using speech recognition and text-to-speech.
 - `speech_recognition`
 - `pyttsx3`
 - `pyaudio`
+- `wikipedia`
 
 ## Setup
 
