@@ -10,7 +10,8 @@ A simple Python voice assistant using speech recognition and text-to-speech.
 - Tells the current time
 - Searches Wikipedia and summarizes results
 - Tells a joke
-- Stops on command ("goodbye", "exit", "stop listening")
+- Stops on command ("goodbye", "exit", "stop listening", "bye")
+- Responds to greetings ("hello", "hi")
 
 ## Requirements
 

@@ -34,17 +34,27 @@ class VoiceAssistant:
             return ""
 
     def handle_command(self, command):
-        if "open google" in command:
+        # Browser opening (flexible)
+        if ("open google" in command or "open browser" in command or 
+            "open chrome" in command or "google" in command):
             self.speak("Opening Google")
             webbrowser.open("https://www.google.com")
-        elif "open youtube" in command:
+        elif "open youtube" in command or "youtube" in command:
             self.speak("Opening YouTube")
             webbrowser.open("https://www.youtube.com")
-        elif "what time" in command or "current time" in command:
+        # Time
+        elif ("time" in command or "current time" in command or 
+              "what's the time" in command or "tell me the time" in command):
             now = datetime.datetime.now().strftime("%I:%M %p")
             self.speak(f"The current time is {now}")
-        elif "search wikipedia for" in command:
-            topic = command.replace("search wikipedia for", "").strip()
+        # Wikipedia search
+        elif "search wikipedia for" in command or "wikipedia" in command:
+            if "search wikipedia for" in command:
+                topic = command.replace("search wikipedia for", "").strip()
+            elif "wikipedia" in command:
+                topic = command.replace("wikipedia", "").strip()
+            else:
+                topic = ""
             if topic:
                 try:
                     summary = wikipedia.summary(topic, sentences=2)
@@ -53,12 +63,18 @@ class VoiceAssistant:
                     self.speak("Sorry, I couldn't find information on that topic.")
             else:
                 self.speak("Please specify a topic to search for.")
-        elif "tell me a joke" in command or "joke" in command:
+        # Joke
+        elif "joke" in command or "tell me a joke" in command:
             joke = random.choice(self.jokes)
             self.speak(joke)
-        elif "goodbye" in command or "stop listening" in command or "exit" in command:
+        # Exit
+        elif ("goodbye" in command or "stop listening" in command or 
+              "exit" in command or "bye" in command):
             self.speak("Goodbye!")
             return False
+        # Greeting
+        elif "hello" in command or "hi" in command:
+            self.speak("Hello! How can I help you?")
         else:
             self.speak("Sorry, I don't recognize that command.")
         return True
